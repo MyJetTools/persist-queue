@@ -47,11 +47,11 @@ where
         }
     }
 
-    pub async fn enqueue(&mut self, value: T) {
+    pub async fn enqueue(&self, value: T) {
         self.queue.lock().await.push_back(value);
     }
 
-    pub async fn dequeue(&mut self) -> Option<T> {
+    pub async fn dequeue(&self) -> Option<T> {
         let mut lock = self.queue.lock().await;
         if lock.is_empty() {
             return None;
@@ -59,7 +59,7 @@ where
         return lock.pop_front();
     }
 
-    pub async fn dequeue_all(&mut self) -> Vec<T> {
+    pub async fn dequeue_all(&self) -> Vec<T> {
         let mut lock = self.queue.lock().await;
         let mut result = vec![];
 
