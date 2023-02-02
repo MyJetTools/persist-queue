@@ -8,25 +8,25 @@ use tokio::{
 };
 
 #[derive(Clone)]
-pub enum PersistQueueSettings {
+pub enum PersistentQueueSettings {
     FilePersist(String, i32),
     MemOnly,
 }
 
-pub struct PersistQueue<T>
+pub struct PersistentQueue<T>
 where
     T: Serialize + DeserializeOwned + Debug,
 {
     queue: Arc<Mutex<VecDeque<T>>>,
     queue_name: String,
-    queue_settings: PersistQueueSettings,
+    queue_settings: PersistentQueueSettings,
 }
 
-impl<T> PersistQueue<T>
+impl<T> PersistentQueue<T>
 where
     T: Serialize + DeserializeOwned + Debug,
 {
-    pub async fn new(queue_name: String, queue_settings: PersistQueueSettings) -> Self {
+    pub async fn new(queue_name: String, queue_settings: PersistentQueueSettings) -> Self {
         Self {
             queue: Arc::new(Mutex::new(VecDeque::new())),
             queue_name,
@@ -36,7 +36,7 @@ where
 
     pub async fn load_from_backup(
         queue_name: String,
-        queue_settings: PersistQueueSettings,
+        queue_settings: PersistentQueueSettings,
     ) -> Self {
         Self {
             queue: Arc::new(Mutex::new(
@@ -74,9 +74,9 @@ where
         persist_snapshot(&self.queue_settings, &self.queue_name, self.queue.clone()).await;
     }
 
-    async fn load_persist_snapshot(name: String, settings: &PersistQueueSettings) -> VecDeque<T> {
+    async fn load_persist_snapshot(name: String, settings: &PersistentQueueSettings) -> VecDeque<T> {
         match settings {
-            PersistQueueSettings::FilePersist(path, _) => {
+            PersistentQueueSettings::FilePersist(path, _) => {
                 let filename = format!("{}-snapshot.json", name);
 
                 let path = format!("{}/{}", path, filename);
@@ -85,18 +85,18 @@ where
 
                 return VecDeque::from(snapshot);
             }
-            PersistQueueSettings::MemOnly => VecDeque::new(),
+            PersistentQueueSettings::MemOnly => VecDeque::new(),
         }
     }
 }
 
 async fn persist_snapshot<T: Serialize>(
-    queue_settings: &PersistQueueSettings,
+    queue_settings: &PersistentQueueSettings,
     queue_name: &str,
     queue: Arc<Mutex<VecDeque<T>>>,
 ) {
     match queue_settings {
-        PersistQueueSettings::FilePersist(path, _) => {
+        PersistentQueueSettings::FilePersist(path, _) => {
             let filename = format!("{}-snapshot.json", queue_name);
             let path = format!("{}/{}", path, filename);
             let path = Path::new(&path);
@@ -108,7 +108,7 @@ async fn persist_snapshot<T: Serialize>(
             let data_to_persist = serde_json::to_vec(&to_persist).unwrap();
             file.write(&data_to_persist.as_slice()).await.unwrap();
         }
-        PersistQueueSettings::MemOnly => {}
+        PersistentQueueSettings::MemOnly => {}
     }
 }
 
@@ -118,9 +118,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_order_cases() {
-        let mut queue: PersistQueue<String> = PersistQueue::new(
+        let mut queue: PersistentQueue<String> = PersistentQueue::new(
             "test".to_string(),
-            PersistQueueSettings::FilePersist("./test/".to_string(), 2),
+            PersistentQueueSettings::FilePersist("./test/".to_string(), 2),
         )
         .await;
 
@@ -147,10 +147,10 @@ mod tests {
     #[tokio::test]
     async fn test_persist() {
         let queue_name = "test".to_string();
-        let settings = PersistQueueSettings::FilePersist("./persist_queue/".to_string(), 2);
+        let settings = PersistentQueueSettings::FilePersist("./persist_queue/".to_string(), 2);
 
-        let mut queue: PersistQueue<String> =
-            PersistQueue::new(queue_name.clone(), settings.clone()).await;
+        let mut queue: PersistentQueue<String> =
+            PersistentQueue::new(queue_name.clone(), settings.clone()).await;
 
         let first = "test5".to_string();
         let second = "test".to_string();
@@ -166,8 +166,8 @@ mod tests {
 
         queue.force_persist().await;
 
-        let mut queue: PersistQueue<String> =
-            PersistQueue::load_from_backup(queue_name.clone(), settings.clone()).await;
+        let mut queue: PersistentQueue<String> =
+            PersistentQueue::load_from_backup(queue_name.clone(), settings.clone()).await;
 
         assert_eq!(queue.dequeue().await, Some(first));
         assert_eq!(queue.dequeue().await, Some(second));
