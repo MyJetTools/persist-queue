@@ -15,7 +15,7 @@ pub enum PersistentQueueSettings {
 
 pub struct PersistentQueue<T>
 where
-    T: Serialize + DeserializeOwned + Debug,
+    T: Serialize + DeserializeOwned,
 {
     queue: Arc<Mutex<VecDeque<T>>>,
     queue_name: String,
@@ -24,7 +24,7 @@ where
 
 impl<T> PersistentQueue<T>
 where
-    T: Serialize + DeserializeOwned + Debug,
+    T: Serialize + DeserializeOwned,
 {
     pub async fn new(queue_name: String, queue_settings: PersistentQueueSettings) -> Self {
         Self {
