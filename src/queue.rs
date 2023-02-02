@@ -70,20 +70,33 @@ where
         return result;
     }
 
-    pub async fn force_persist(&self){
+    pub async fn force_persist(&self) {
         persist_snapshot(&self.queue_settings, &self.queue_name, self.queue.clone()).await;
     }
 
-    async fn load_persist_snapshot(name: String, settings: &PersistentQueueSettings) -> VecDeque<T> {
+    async fn load_persist_snapshot(
+        name: String,
+        settings: &PersistentQueueSettings,
+    ) -> VecDeque<T> {
         match settings {
             PersistentQueueSettings::FilePersist(path, _) => {
                 let filename = format!("{}-snapshot.json", name);
 
                 let path = format!("{}/{}", path, filename);
-                let snapshot = fs::read_to_string(path).await.unwrap();
-                let snapshot: Vec<T> = serde_json::from_str(&snapshot).unwrap();
+                let snapshot = fs::read_to_string(path).await;
 
-                return VecDeque::from(snapshot);
+                let cache = match snapshot {
+                    Ok(snapshot) => serde_json::from_str(&snapshot).unwrap(),
+                    Err(err) => {
+                        println!(
+                            "Error loading snapshot of {} queue. Starts as empty queue. Error: {}",
+                            name, err
+                        );
+                        VecDeque::new()
+                    }
+                };
+
+                return cache;
             }
             PersistentQueueSettings::MemOnly => VecDeque::new(),
         }
