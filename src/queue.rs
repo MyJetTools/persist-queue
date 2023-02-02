@@ -189,4 +189,34 @@ mod tests {
         assert_eq!(queue.dequeue().await, Some(fifth));
         assert_eq!(queue.dequeue().await, None);
     }
+
+    #[tokio::test]
+    async fn test_dequeue_all_order() {
+        let queue_name = "test".to_string();
+        let settings = PersistentQueueSettings::FilePersist("./persist_queue/".to_string(), 2);
+
+        let queue: PersistentQueue<String> =
+            PersistentQueue::new(queue_name.clone(), settings.clone()).await;
+
+        let first = "test5".to_string();
+        let second = "test".to_string();
+        let third = "test1".to_string();
+        let fourth = "test3".to_string();
+        let fifth = "test4".to_string();
+
+        queue.enqueue(first.clone()).await;
+        queue.enqueue(second.clone()).await;
+        queue.enqueue(third.clone()).await;
+        queue.enqueue(fourth.clone()).await;
+        queue.enqueue(fifth.clone()).await;
+
+        let dequeue_result = queue.dequeue_all().await;
+
+        assert_eq!(dequeue_result[0], first);
+        assert_eq!(dequeue_result[1], second);
+        assert_eq!(dequeue_result[2], third);
+        assert_eq!(dequeue_result[3], fourth);
+        assert_eq!(dequeue_result[4], fifth);
+        assert_eq!(queue.dequeue().await, None);
+    }
 }
